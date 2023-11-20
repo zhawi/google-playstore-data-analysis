@@ -11,7 +11,7 @@ object GetDfSchemaAsCreateTable extends SparkProvider{
     val schema = df.schema
 
     val columns = schema.fields.map { field =>
-      val fieldName = field.name
+      val fieldName = field.name.replace(" ", "_")
       val fieldType = field.dataType.simpleString match {
         case "integer" => "INTEGER"
         case "long" => "BIGINT"
@@ -26,7 +26,7 @@ object GetDfSchemaAsCreateTable extends SparkProvider{
       s"$fieldName $fieldType"
     }
 
-    s"CREATE TABLE $tableName (${columns.mkString(", ")})"
+    s"CREATE TABLE IF NOT EXISTS $tableName (${columns.mkString(", ")})"
   }
 
 }
