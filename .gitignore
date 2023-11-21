@@ -181,6 +181,7 @@ conf.csv
 #scala 
 *.iml
 *untitled.iml
+*.conf
 
 
 #Azure extensions
