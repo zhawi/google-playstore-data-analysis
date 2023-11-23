@@ -1,11 +1,11 @@
-import helperClasses.{DfCreator, GetDfSchemaAsCreateTable, SplitStrings, WriteToSql, SchemaCreation}
+import helperClasses.{DfCreator, GetDfSchemaAsCreateTable, SchemaCreation, StringManipulation, WriteToSql}
+import org.apache.spark.sql.functions._
 import sessionProvider.SparkProvider
 
 import java.sql.DriverManager
 import com.typesafe.config.ConfigFactory
 
-object App extends SparkProvider with SplitStrings with SchemaCreation {
-
+object App extends SparkProvider with StringManipulation with SchemaCreation {
   def main(args: Array[String]): Unit = {
 
     //Config load to get configurations to connect to postgres
@@ -14,22 +14,45 @@ object App extends SparkProvider with SplitStrings with SchemaCreation {
     val dbuser = config.getString("database.user")
     val dbpassword = config.getString("database.password")
 
-    val userRatingCsvSchema = userRatingSchema()
-    val googlePlaystoreCsvSchema = googlePlaystoreSchema()
-
-
     //Files location to be used on the program
     val googlePlayStoreCsv = "~/../../Data/googlePlaystore.csv"
     val googlePlayStoreUserReviewCsv = "~/../../Data/userReviews.csv"
 
-    //1. Creation of Dataframe from raw data and store it to SQL as raw data
+    //1. Creation of Dataframe from raw data and store it to SQL as raw data with text fields
     //Creation of Dataframes using structured pre-defined schema
     val googlePSDf = DfCreator.dfWithSchemaFromCsv(googlePlayStoreCsv)
     val googlePSURDf = DfCreator.dfWithSchemaFromCsv(googlePlayStoreUserReviewCsv)
 
-    WriteToSql.writeToSql(googlePSDf, rawDbConn, getName(googlePlayStoreCsv), dbuser, dbpassword)
-    WriteToSql.writeToSql(googlePSURDf, rawDbConn, getName(googlePlayStoreUserReviewCsv), dbuser, dbpassword)
+    WriteToSql.writeToSql(
+      googlePSDf,
+      rawDbConn,
+      getTableNameSourceFile(googlePlayStoreCsv),
+      dbuser,
+      dbpassword
+    )
 
+    WriteToSql.writeToSql(
+        googlePSURDf,
+        rawDbConn,
+        getTableNameSourceFile(googlePlayStoreUserReviewCsv),
+        dbuser,
+        dbpassword
+    )
+
+    googlePSDf
+      .withColumn("App_id", monotonically_increasing_id() + 1)
+      .withColumn("App", trim(col("App")))
+      .withColumn("Category", col("Category"))
+      .withColumn("Rating", col("Rating"))
+      .withColumn("Size", sizeToBytes(col("Size")))
+      .withColumn("Installs", installsInteger(col("Installs")))
+      .withColumn("Type", col("Type"))
+      .withColumn("Price", col("Price"))
+      .show(20)
+      //.show(10)
+    //2. Creation of Dataframe with correct schema and data cleaned to match said schema, addition of app_id field
+
+    /*
     val schemaPSDfToSql = GetDfSchemaAsCreateTable
       .getSchemaAsCreateTableQuery(googlePSDf, getName(googlePlayStoreCsv))
 
@@ -37,9 +60,10 @@ object App extends SparkProvider with SplitStrings with SchemaCreation {
       .getSchemaAsCreateTableQuery(googlePSURDf, getName(googlePlayStoreUserReviewCsv))
 
 
-    //println(schemaPSDfToSql)
+    val userRatingCsvSchema = userRatingSchema()
+    val googlePlaystoreCsvSchema = googlePlaystoreSchema()
 
-    /*val connection = DriverManager.getConnection(postgresConn, dbuser, dbpassword)
+    val connection = DriverManager.getConnection(rawDbConn, dbuser, dbpassword)
     try {
       val statement = connection.createStatement()
       statement.execute(schemaPSDfToSql)
