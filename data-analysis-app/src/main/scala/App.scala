@@ -44,12 +44,20 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
       .withColumn("App", trim(col("App")))
       .withColumn("Category", col("Category"))
       .withColumn("Rating", col("Rating"))
+      .withColumn("Reviews", col("Reviews"))
       .withColumn("Size", sizeToBytes(col("Size")))
-      .withColumn("Installs", installsInteger(col("Installs")))
+      .withColumn("Installs", installsLong(col("Installs")))
       .withColumn("Type", col("Type"))
       .withColumn("Price", col("Price"))
-      .show(20)
-      //.show(10)
+      .withColumn("Content_rating", col("Content Rating"))
+      .withColumn("Genres", col("Genres"))
+      .withColumn("Last_updated", to_date(col("Last Updated"), "MMMM d, yyyy"))
+      .withColumn("Current_ver", col("Current Ver"))
+      .withColumn("Android_ver", col("Android Ver"))
+      .drop("Content Rating", "Last Updated", "Current Ver", "Android Ver")
+      .show(10)
+
+    googlePSURDf.show(10)
     //2. Creation of Dataframe with correct schema and data cleaned to match said schema, addition of app_id field
 
     /*
