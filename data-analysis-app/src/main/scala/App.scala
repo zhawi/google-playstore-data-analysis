@@ -39,25 +39,15 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
         dbpassword
     )
 
-    googlePSDf
-      .withColumn("App_id", monotonically_increasing_id() + 1)
-      .withColumn("App", trim(col("App")))
-      .withColumn("Category", col("Category"))
-      .withColumn("Rating", col("Rating"))
-      .withColumn("Reviews", col("Reviews"))
-      .withColumn("Size", sizeToBytes(col("Size")))
-      .withColumn("Installs", installsLong(col("Installs")))
-      .withColumn("Type", col("Type"))
-      .withColumn("Price", col("Price"))
-      .withColumn("Content_rating", col("Content Rating"))
-      .withColumn("Genres", col("Genres"))
-      .withColumn("Last_updated", to_date(col("Last Updated"), "MMMM d, yyyy"))
-      .withColumn("Current_ver", col("Current Ver"))
-      .withColumn("Android_ver", col("Android Ver"))
-      .drop("Content Rating", "Last Updated", "Current Ver", "Android Ver")
-      .show(10)
+    val googlePSDfWithAppId = DfCreator.dfWithSpecificColumnsPS(googlePSDf)
+    val googlePSURDfCleaned = DfCreator.dfWithSpecificColumnsPSUR(googlePSURDf)
 
-    googlePSURDf.show(10)
+    googlePSDfWithAppId.filter(col("App_id") === 12).show()
+
+    val columnsToCheck = Seq("Sentiment_Polarity", "Sentiment_Subjectivity")
+    val dftest2 = DfCreator.dfUrWithMatchingAppIdFromDfPs(googlePSURDfCleaned, googlePSDfWithAppId)
+    val dfCleaned = dftest2.na.drop("any", columnsToCheck)
+    dfCleaned.filter(col("Sentiment") === "nan").show()
     //2. Creation of Dataframe with correct schema and data cleaned to match said schema, addition of app_id field
 
     /*
