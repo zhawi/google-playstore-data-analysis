@@ -22,7 +22,7 @@ object DfCreator extends SparkProvider with StringManipulation {
   }
 
   def dfWithSpecificColumnsPS(df: DataFrame): DataFrame = {
-      df.dropDuplicates("App")
+      val dfWithoutDuplicates = df.dropDuplicates("App")
       .withColumn("App_id", monotonically_increasing_id() + 1)
       .withColumn("App", trim(lower(col("App"))))
       .withColumn("Category", col("Category"))
@@ -38,10 +38,15 @@ object DfCreator extends SparkProvider with StringManipulation {
       .withColumn("Current_ver", col("Current Ver"))
       .withColumn("Android_ver", col("Android Ver"))
       .drop("Content Rating", "Last Updated", "Current Ver", "Android Ver")
+
+    val allColumns = Seq("App_id") ++ dfWithoutDuplicates.columns.filter(_ != "App_id")
+
+    val reorderedDf = dfWithoutDuplicates.select(allColumns.map(col): _*)
+    reorderedDf
   }
 
   def dfWithSpecificColumnsPSUR(df: DataFrame): DataFrame = {
-    df.dropDuplicates("App", "Translated_Review")
+    df.dropDuplicates("App", "Translated_Review", "Sentiment", "Sentiment_Polarity", "Sentiment_Subjectivity")
       .withColumn("App", trim(lower(col("App"))))
       .withColumn("Translated_Review", trim(col("Translated_review")))
       .withColumn("Sentiment", col("Sentiment"))
