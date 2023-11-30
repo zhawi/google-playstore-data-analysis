@@ -1,8 +1,5 @@
-import helperClasses.{DfCreator, DfTransformations, GetDfSchemaAsCreateTable, SchemaCreation, StringManipulation, WriteToSql}
-import org.apache.spark.sql.functions._
+import helperClasses.{DfCreator, DfTransformations, SchemaCreation, StringManipulation, WriteToSql}
 import sessionProvider.SparkProvider
-
-import java.sql.DriverManager
 import com.typesafe.config.ConfigFactory
 
 object App extends SparkProvider with StringManipulation with SchemaCreation {
@@ -12,50 +9,58 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
     Config load to get configurations to connect to postgres
        --------------------------------------------------------------------------------------------------------- */
 
+
     val config = ConfigFactory.load()
     val rawDbConn = config.getString("database.rawDbUrl")
     val cleanDbConn = config.getString("database.cleanDbUrl")
-    val dbuser = config.getString("database.user")
-    val dbpassword = config.getString("database.password")
+    val enrichedDbConn = config.getString("database.enrichedDbUrl")
+    val dbUser = config.getString("database.user")
+    val dbPassword = config.getString("database.password")
 
     //Files location to be used on the program
     val googlePlayStoreCsv = "~/../../Data/googlePlaystore.csv"
     val googlePlayStoreUserReviewCsv = "~/../../Data/userReviews.csv"
 
+
     /* ---------------------------------------------------------------------------------------------------------
     1. Creation of Dataframe from raw data
        --------------------------------------------------------------------------------------------------------- */
+
 
     //Creation of Dataframes using structured pre-defined schema
     val googlePSDf = DfCreator.dfWithSchemaFromCsv(googlePlayStoreCsv)
     val googlePSURDf = DfCreator.dfWithSchemaFromCsv(googlePlayStoreUserReviewCsv)
 
+
     /* ---------------------------------------------------------------------------------------------------------
     2. store dataframes to SQL database rawDb as raw data with text fields and name equal to the file
        --------------------------------------------------------------------------------------------------------- */
 
-    //Googleplaystore app table with raw data
+    //Google playStore apps table with raw data
     WriteToSql.writeToSql(
       googlePSDf,
       rawDbConn,
       getTableNameSourceFile(googlePlayStoreCsv),
-      dbuser,
-      dbpassword
+      dbUser,
+      dbPassword
     )
 
-    //Googleplaystore apps with user review table with raw data
+    //Google playStore apps with user review table with raw data
     WriteToSql.writeToSql(
         googlePSURDf,
         rawDbConn,
         getTableNameSourceFile(googlePlayStoreUserReviewCsv),
-        dbuser,
-        dbpassword
+        dbUser,
+        dbPassword
     )
+
+
     /* ---------------------------------------------------------------------------------------------------------
     3. Creation of Dataframes with correct schema and data cleaned to match said schema, addition of app_id field
        --------------------------------------------------------------------------------------------------------- */
 
-    //- Cleaned google playstore data (without duplicates and using App as a unique value), added also app_id
+
+    //- Cleaned google playStore data (without duplicates and using App as a unique value), added also app_id
     //Give also correct type to columns, fixed values to be presented as double correctly and long
     val googlePSDfWithAppId = DfCreator.dfWithSpecificColumnsPS(googlePSDf)
 
@@ -64,19 +69,20 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
     val googlePSURDfCleaned = DfCreator.dfWithSpecificColumnsPSUR(googlePSURDf)
 
 
-    //- Added app_id field to match correct app to the app_id corresponding on playstore dataframe
+    //- Added app_id field to match correct app to the app_id corresponding on playStore dataframe
     val googlePSURDfWithAppId = DfCreator.dfUrWithMatchingAppIdFromDfPs(googlePSURDfCleaned, googlePSDfWithAppId)
 
     //- Removed none existing values to generate better value when working with the data
     val columnsToCheck = Seq("Sentiment_Polarity", "Sentiment_Subjectivity")
     val googlePSURWithoutNulls = DfTransformations.removeNanValues(googlePSURDfWithAppId, columnsToCheck)
 
+
     /* ---------------------------------------------------------------------------------------------------------
     4. store dataframes to SQL database cleanDb as clean data
-    with corect type field and name equal to the file + clean, creation of 3 tables:
-    - google playstore app data: without duplicates, with an app_id column and correct types with proper formatting
-    - google playstore app user review: without duplicates and correct types with proper formatting
-    - google playstore app user review with app_id: adittion of app_id and removal of null values
+    with correct type field and name equal to the file + clean, creation of 3 tables:
+       - google playStore app data: without duplicates, with an app_id column and correct types with proper formatting
+       - google playStore app user review: without duplicates and correct types with proper formatting
+       - google playStore app user review with app_id: addition of app_id and removal of null values
        --------------------------------------------------------------------------------------------------------- */
 
 
@@ -84,45 +90,123 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
       googlePSDfWithAppId,
       cleanDbConn,
       getTableNameSourceFile(googlePlayStoreCsv) + "clean",
-      dbuser,
-      dbpassword
+      dbUser,
+      dbPassword
     )
 
     WriteToSql.writeToSql(
       googlePSURDfCleaned,
       cleanDbConn,
       getTableNameSourceFile(googlePlayStoreUserReviewCsv) + "clean",
-      dbuser,
-      dbpassword
+      dbUser,
+      dbPassword
     )
 
     WriteToSql.writeToSql(
       googlePSURWithoutNulls,
       cleanDbConn,
       getTableNameSourceFile(googlePlayStoreUserReviewCsv) + "cleanWithId",
-      dbuser,
-      dbpassword
+      dbUser,
+      dbPassword
     )
 
-    /*
-    val schemaPSDfToSql = GetDfSchemaAsCreateTable
-      .getSchemaAsCreateTableQuery(googlePSDf, getName(googlePlayStoreCsv))
 
-    val schemaPSURDfToSql = GetDfSchemaAsCreateTable
-      .getSchemaAsCreateTableQuery(googlePSURDf, getName(googlePlayStoreUserReviewCsv))
-
-
-    val userRatingCsvSchema = userRatingSchema()
-    val googlePlaystoreCsvSchema = googlePlaystoreSchema()
-
-    val connection = DriverManager.getConnection(rawDbConn, dbuser, dbpassword)
-    try {
-      val statement = connection.createStatement()
-      statement.execute(schemaPSDfToSql)
-    } finally {
-      connection.close()
-    }*/
+    /* ---------------------------------------------------------------------------------------------------------
+    5. Creation of new tables to be consumed to create dashboards, this will be stored in the enriched db
+    creation of 5 tables:
+        - appPerformance: Table with average rating for each app, sum of installs and sum of reviews;
+        - userSentiment: Sentiment distribution per app, average polarity and subjectivity
+        - categoryAnalysis: Total apps per Category, average rating, size and price per Category
+        - marketTrends: Trends overtime (this is done but we have no incremental of data as of today)
+        - newTrendingApps: Identify apps with significant recent growth in reviews and Installs
+        (this is done but we have no incremental of data as of today)
+        --------------------------------------------------------------------------------------------------------- */
 
 
+     /* ---------------------------------------------------------------------------------------------------------
+        i. Creation of app performance dataframe and store it on postgres sql server
+        --------------------------------------------------------------------------------------------------------- */
+
+
+    val appPerformanceDf = DfTransformations.appPerformanceTransformations(googlePSDfWithAppId)
+
+    WriteToSql.writeToSql(
+      appPerformanceDf,
+      enrichedDbConn,
+      "appperformance",
+      dbUser,
+      dbPassword
+    )
+
+    appPerformanceDf.show(2)
+
+
+     /* ---------------------------------------------------------------------------------------------------------
+        ii. Creation of userSentiment and store it on postgres sql server
+        --------------------------------------------------------------------------------------------------------- */
+
+
+    val userSentimentDf = DfTransformations.userSentimentTransformation(googlePSURWithoutNulls)
+
+    WriteToSql.writeToSql(
+      userSentimentDf,
+      enrichedDbConn,
+      "usersentiment",
+      dbUser,
+      dbPassword
+    )
+
+    userSentimentDf.show(2)
+
+    /* ---------------------------------------------------------------------------------------------------------
+        iii. Creation of categoryAnalysis and store it on postgres sql server
+        --------------------------------------------------------------------------------------------------------- */
+
+
+    val categoryAnalysisDf = DfTransformations.categoryAnalysisTransformation(googlePSDfWithAppId)
+
+    categoryAnalysisDf.show(2)
+
+    WriteToSql.writeToSql(
+      categoryAnalysisDf,
+      enrichedDbConn,
+      "categoryanalysis",
+      dbUser,
+      dbPassword
+    )
+
+    /* ---------------------------------------------------------------------------------------------------------
+        iv. Creation of marketTrends and store it on postgres sql server
+        --------------------------------------------------------------------------------------------------------- */
+
+
+    val marketTrendsDf = DfTransformations.marketTrendsTransformation(googlePSDfWithAppId)
+
+    marketTrendsDf.show(2)
+
+    WriteToSql.writeToSql(
+      marketTrendsDf,
+      enrichedDbConn,
+      "markettrends",
+      dbUser,
+      dbPassword
+    )
+
+
+    /* ---------------------------------------------------------------------------------------------------------
+       v. Creation of newTrendingApps and store it on postgres sql server
+       --------------------------------------------------------------------------------------------------------- */
+
+    /* this is gonna be commented out for future reference if I decide to make this a proper ETL solution
+    val newTrendingAppsDf = DfTransformations.newTrendingAppsTransformation(googlePSDfWithAppId)
+
+    WriteToSql.writeToSql(
+      newTrendingAppsDf,
+      enrichedDbConn,
+      "newtrendingapps",
+      dbUser,
+      dbPassword
+    )
+     */
   }
 }

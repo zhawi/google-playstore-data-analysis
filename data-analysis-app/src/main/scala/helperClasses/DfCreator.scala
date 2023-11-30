@@ -1,11 +1,11 @@
 package helperClasses
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.catalyst.dsl.expressions.StringToAttributeConversionHelper
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StructType
 import sessionProvider.SparkProvider
 
+//Object to create different Dataframes based on different options
 object DfCreator extends SparkProvider with StringManipulation {
 
   def dfWithSchemaFromCsv(path: String): DataFrame = {

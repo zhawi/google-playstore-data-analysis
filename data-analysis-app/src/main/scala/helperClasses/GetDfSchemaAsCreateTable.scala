@@ -4,6 +4,7 @@ import sessionProvider.SparkProvider
 
 import org.apache.spark.sql.DataFrame
 
+//Object used to create tables in SQL using create table sql queries
 object GetDfSchemaAsCreateTable extends SparkProvider{
 
   def getSchemaAsCreateTableQuery(df: DataFrame, tableName: String): String = {

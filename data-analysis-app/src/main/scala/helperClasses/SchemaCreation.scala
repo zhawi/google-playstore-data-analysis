@@ -2,6 +2,7 @@ package helperClasses
 
 import org.apache.spark.sql.types._
 
+//Trait created to create schema manually to use as a base schema when creating Dataframes
 trait SchemaCreation {
 
   def userRatingSchema(): StructType = {

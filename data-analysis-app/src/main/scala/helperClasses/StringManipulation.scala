@@ -2,6 +2,8 @@ package helperClasses
 
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.Column
+
+//Trait with different functions to help manage strings
 trait StringManipulation {
 
   def getTableNameSourceFile(fileNamePath: String): String = {
