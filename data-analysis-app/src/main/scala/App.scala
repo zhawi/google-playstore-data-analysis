@@ -138,8 +138,6 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
       dbPassword
     )
 
-    appPerformanceDf.show(2)
-
 
      /* ---------------------------------------------------------------------------------------------------------
         ii. Creation of userSentiment and store it on postgres sql server
@@ -156,7 +154,6 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
       dbPassword
     )
 
-    userSentimentDf.show(2)
 
     /* ---------------------------------------------------------------------------------------------------------
         iii. Creation of categoryAnalysis and store it on postgres sql server
@@ -164,8 +161,6 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
 
 
     val categoryAnalysisDf = DfTransformations.categoryAnalysisTransformation(googlePSDfWithAppId)
-
-    categoryAnalysisDf.show(2)
 
     WriteToSql.writeToSql(
       categoryAnalysisDf,
@@ -182,8 +177,6 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
 
     val marketTrendsDf = DfTransformations.marketTrendsTransformation(googlePSDfWithAppId)
 
-    marketTrendsDf.show(2)
-
     WriteToSql.writeToSql(
       marketTrendsDf,
       enrichedDbConn,
@@ -198,6 +191,7 @@ object App extends SparkProvider with StringManipulation with SchemaCreation {
        --------------------------------------------------------------------------------------------------------- */
 
     /* this is gonna be commented out for future reference if I decide to make this a proper ETL solution
+    
     val newTrendingAppsDf = DfTransformations.newTrendingAppsTransformation(googlePSDfWithAppId)
 
     WriteToSql.writeToSql(
