@@ -29,6 +29,12 @@ object DfTransformations {
       )
   }
 
+  def userSentimentDistributionTransformation(df: DataFrame): DataFrame = {
+    df.groupBy("App", "Sentiment")
+      .count()
+      .withColumnRenamed("count", "Total_Sentiment")
+  }
+
   def categoryAnalysisTransformation(df: DataFrame): DataFrame = {
     df
       .withColumn("Price_Numeric",

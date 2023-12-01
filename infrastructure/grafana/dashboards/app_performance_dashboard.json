@@ -1,0 +1,399 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "description": "Top 5 highest Reviews apps;\nPrice per Category;\nTop 50 most downloaded apps.",
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 1,
+    "links": [],
+    "liveNow": false,
+    "panels": [
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "de4b26b6-0215-4297-bccc-f90ca97ecda2"
+        },
+        "description": "Ordered by Average price in descent so that it is possible to see the average price of apps per category and the total applications that exist in each.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "auto",
+              "cellOptions": {
+                "type": "auto"
+              },
+              "inspect": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "id": 3,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "fields": "",
+            "reducer": [
+              "sum"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "10.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "postgres",
+              "uid": "de4b26b6-0215-4297-bccc-f90ca97ecda2"
+            },
+            "editorMode": "code",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT \"Category\", \nCONCAT('$', CAST(ROUND(AVG(CASE \n                                  WHEN \"Price\" != '0' THEN CAST(SUBSTRING(\"Price\", 2) AS DECIMAL(10, 2))\n                                  ELSE 0 -- or use NULL if you prefer to exclude these cases from the average\n                              END), 2) AS VARCHAR)) AS \"Average Price\",\ncount(\"App\") as \"Total applications\"\n\nFROM appperformance\nWHERE \n  \"Category\" IS NOT NULL AND \"Category\" != ''\nGROUP BY \"Category\" \nORDER BY 2 Desc",
+            "refId": "A",
+            "sql": {
+              "columns": [
+                {
+                  "parameters": [],
+                  "type": "function"
+                }
+              ],
+              "groupBy": [
+                {
+                  "property": {
+                    "type": "string"
+                  },
+                  "type": "groupBy"
+                }
+              ],
+              "limit": 50
+            }
+          }
+        ],
+        "title": "App Performance: Average Price per app in a Category",
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "de4b26b6-0215-4297-bccc-f90ca97ecda2"
+        },
+        "description": "Top 50 apps with the highest amount of installs",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "auto",
+              "cellOptions": {
+                "type": "auto"
+              },
+              "inspect": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 15,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "id": 2,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "fields": "",
+            "reducer": [
+              "sum"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "10.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "postgres",
+              "uid": "de4b26b6-0215-4297-bccc-f90ca97ecda2"
+            },
+            "editorMode": "code",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT \"App\" as \"Application Name\", \n    CASE\n        WHEN \"Total_Installs\" >= 1000000000 THEN CONCAT(CAST(\"Total_Installs\" / 1000000000 AS VARCHAR), 'B+')\n        WHEN \"Total_Installs\" >= 1000000 THEN CONCAT(CAST(\"Total_Installs\" / 1000000 AS VARCHAR), 'M+')\n        WHEN \"Total_Installs\" >= 1000 THEN CONCAT(CAST(\"Total_Installs\" / 1000 AS VARCHAR), 'k+')\n        ELSE CAST(\"Total_Installs\" AS VARCHAR)\n    END as \"Total Installs\", \"Total_Reviews\" as \"Total Reviews\"\nFROM appperformance \nORDER BY \"Total_Installs\" DESC \nLIMIT 50",
+            "refId": "A",
+            "sql": {
+              "columns": [
+                {
+                  "parameters": [
+                    {
+                      "name": "\"App\"",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
+                },
+                {
+                  "parameters": [
+                    {
+                      "name": "\"Total_Installs\"",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
+                },
+                {
+                  "parameters": [
+                    {
+                      "name": "\"Total_Reviews\"",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
+                }
+              ],
+              "groupBy": [
+                {
+                  "property": {
+                    "type": "string"
+                  },
+                  "type": "groupBy"
+                }
+              ],
+              "limit": 50,
+              "orderBy": {
+                "property": {
+                  "name": [
+                    "\"Total_Installs\""
+                  ],
+                  "type": "string"
+                },
+                "type": "property"
+              },
+              "orderByDirection": "DESC"
+            },
+            "table": "appperformance"
+          }
+        ],
+        "title": "App Performance: Highest installed Apps",
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "de4b26b6-0215-4297-bccc-f90ca97ecda2"
+        },
+        "description": "Top 5 apps with the highest reviews ",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "fillOpacity": 54,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "lineWidth": 1,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "id": 1,
+        "options": {
+          "barRadius": 0,
+          "barWidth": 0.8,
+          "colorByField": "Total Reviews",
+          "fullHighlight": false,
+          "groupWidth": 0.7,
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": false
+          },
+          "orientation": "auto",
+          "showValue": "auto",
+          "stacking": "none",
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          },
+          "xField": "App",
+          "xTickLabelRotation": 0,
+          "xTickLabelSpacing": 0
+        },
+        "targets": [
+          {
+            "datasource": {
+              "type": "postgres",
+              "uid": "de4b26b6-0215-4297-bccc-f90ca97ecda2"
+            },
+            "editorMode": "code",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT \"App\", CASE\n        WHEN \"Total_Installs\" >= 1000000000 THEN CONCAT(CAST(\"Total_Installs\" / 1000000000 AS VARCHAR), 'B+')\n        WHEN \"Total_Installs\" >= 1000000 THEN CONCAT(CAST(\"Total_Installs\" / 1000000 AS VARCHAR), 'M+')\n        WHEN \"Total_Installs\" >= 1000 THEN CONCAT(CAST(\"Total_Installs\" / 1000 AS VARCHAR), 'k+')\n        ELSE CAST(\"Total_Installs\" AS VARCHAR)\n    END as \"Total Installs\", \"Total_Reviews\" as \"Total Reviews\"\nFROM appperformance \nORDER BY \"Total_Reviews\" DESC \nLIMIT 5",
+            "refId": "A",
+            "sql": {
+              "columns": [
+                {
+                  "parameters": [
+                    {
+                      "name": "\"App\"",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
+                },
+                {
+                  "parameters": [
+                    {
+                      "name": "\"Total_Installs\"",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
+                },
+                {
+                  "parameters": [
+                    {
+                      "name": "\"Total_Reviews\"",
+                      "type": "functionParameter"
+                    }
+                  ],
+                  "type": "function"
+                }
+              ],
+              "groupBy": [
+                {
+                  "property": {
+                    "type": "string"
+                  },
+                  "type": "groupBy"
+                }
+              ],
+              "limit": 50,
+              "orderBy": {
+                "property": {
+                  "name": [
+                    "\"Total_Installs\""
+                  ],
+                  "type": "string"
+                },
+                "type": "property"
+              },
+              "orderByDirection": "DESC"
+            },
+            "table": "appperformance"
+          }
+        ],
+        "title": "App Performance: Highest Reviews",
+        "type": "barchart"
+      }
+    ],
+    "refresh": "",
+    "schemaVersion": 38,
+    "tags": [],
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "App Performance",
+    "uid": "e3ca439a-f13d-443a-8727-9f75a61c28f9",
+    "version": 5,
+    "weekStart": ""
+  }
